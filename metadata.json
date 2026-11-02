@@ -1,0 +1,8 @@
+{
+  "name": "HayPahest - ՀայՊահեստ",
+  "description": "Հայաստանի առաջատար ամպային պահեստային և վաճառքի կառավարման համակարգ ՓՄՁ-ների համար",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

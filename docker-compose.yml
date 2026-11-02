@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. PostgreSQL Database Service
+  # ==========================================
+  db:
+    image: postgres:16-alpine
+    container_name: haypahest-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-haypahest_secure_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-haypahest_db}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-haypahest_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - haypahest-net
+
+  # ==========================================
+  # 2. FastAPI Python Backend Service
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: haypahest-backend
+    restart: always
+    environment:
+      APP_NAME: "HayPahest API"
+      APP_ENV: "production"
+      DEBUG: "False"
+      API_V1_STR: "/api/v1"
+      SECRET_KEY: ${SECRET_KEY:-haypahest-commercial-production-jwt-key-yerevan-2026}
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-haypahest_secure_pass_2026}@db:5432/${POSTGRES_DB:-haypahest_db}"
+      DATABASE_SYNC_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-haypahest_secure_pass_2026}@db:5432/${POSTGRES_DB:-haypahest_db}"
+      BACKEND_CORS_ORIGINS: '["http://localhost","http://localhost:3000","http://localhost:80","https://haypahest.am"]'
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - haypahest-net
+
+  # ==========================================
+  # 3. React Frontend Nginx Service
+  # ==========================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: haypahest-frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - haypahest-net
+
+  # ==========================================
+  # 4. Automated Database Backup Service
+  # ==========================================
+  db-backup:
+    image: postgres:16-alpine
+    container_name: haypahest-db-backup
+    restart: always
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-haypahest_secure_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-haypahest_db}
+    volumes:
+      - ./backups:/backups
+    entrypoint: |
+      /bin/sh -c '
+      while true; do
+        DATE=$$(date +%Y%m%d_%H%M%S)
+        echo "Creating automated database backup: haypahest_backup_$$DATE.sql.gz"
+        mkdir -p /backups
+        PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -h $$POSTGRES_HOST -U $$POSTGRES_USER -d $$POSTGRES_DB | gzip > /backups/haypahest_backup_$$DATE.sql.gz
+        # Retain only last 14 days of backups
+        find /backups -name "haypahest_backup_*.sql.gz" -mtime +14 -delete
+        echo "Backup complete. Next run in 24 hours."
+        sleep 86400
+      done'
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - haypahest-net
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  haypahest-net:
+    driver: bridge
