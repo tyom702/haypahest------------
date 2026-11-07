@@ -38,3 +38,7 @@ build-backend = "setuptools.build_meta"
 asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = "test_*.py"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["alembic*"]
