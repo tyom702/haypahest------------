@@ -1,6 +1,8 @@
+
 from typing import List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
@@ -11,13 +13,17 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # Application
     APP_NAME: str = "HayPahest API"
     APP_ENV: str = "development"
-    DEBUG: bool = True
+    DEBUG: bool = False
     API_V1_STR: str = "/api/v1"
 
     # Security
-    SECRET_KEY: str = "haypahest-super-secret-jwt-key-change-in-production"
+    SECRET_KEY: str = Field(
+        default="change-this-secret-key-before-deployment",
+        min_length=32,
+    )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
@@ -25,6 +31,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = (
         "postgresql+asyncpg://postgres:postgres@localhost:5432/haypahest_db"
     )
+
     DATABASE_SYNC_URL: str = (
         "postgresql://postgres:postgres@localhost:5432/haypahest_db"
     )
@@ -41,5 +48,28 @@ class Settings(BaseSettings):
     # Rate limiting
     RATE_LIMIT_PER_MINUTE: int = 60
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value):
+        if isinstance(value, str):
+            value = value.strip()
+
+            if value.startswith("postgres://"):
+                value = value.replace(
+                    "postgres://",
+                    "postgresql+asyncpg://",
+                    1,
+                )
+
+            elif value.startswith("postgresql://"):
+                value = value.replace(
+                    "postgresql://",
+                    "postgresql+asyncpg://",
+                    1,
+                )
+
+        return value
+
 
 settings = Settings()
+
