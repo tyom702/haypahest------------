@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str = Field(
-        default="change-this-secret-key-before-deployment",
+        default="haypahest-super-secret-jwt-key-change-in-production",
         min_length=32,
     )
     ALGORITHM: str = "HS256"
