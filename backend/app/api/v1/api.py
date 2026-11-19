@@ -14,14 +14,7 @@ from app.api.v1 import (
 
 api_router = APIRouter()
 
-# Authentication
-api_router.include_router(
-    auth.router,
-    prefix="/auth",
-    tags=["Authentication"],
-)
-
-# Other modules
+api_router.include_router(auth.router)
 api_router.include_router(businesses.router)
 api_router.include_router(categories.router)
 api_router.include_router(products.router)
