@@ -1,3 +1,4 @@
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -15,19 +16,25 @@ from app.core.exceptions import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Աղյուսակները ավտոմատ ստեղծել development/test միջավայրերում։
+    """Application startup and shutdown."""
+
+    # Database initialization
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     yield
 
+    # Database shutdown
     await engine.dispose()
 
 
 app = FastAPI(
     title=settings.APP_NAME,
     version="1.0.0",
-    description="ՀայՊահեստ (HayPahest) — ՓՄՁ Պահեստային և Վաճառքի Կառավարման Համակարգի API",
+    description=(
+        "ՀայՊահեստ (HayPahest) — "
+        "ՓՄՁ Պահեստային և Վաճառքի Կառավարման Համակարգի API"
+    ),
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -35,6 +42,7 @@ app = FastAPI(
 )
 
 
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
@@ -44,6 +52,7 @@ app.add_middleware(
 )
 
 
+# Custom exception handlers
 @app.exception_handler(InsufficientStockException)
 async def insufficient_stock_handler(
     request: Request,
@@ -72,12 +81,19 @@ async def permission_denied_handler(
     )
 
 
-# API endpoint-ներ, օրինակ՝ /api/v1/auth/login
-app.include_router(api_router, prefix=settings.API_V1_STR)
+# API v1 routes
+app.include_router(
+    api_router,
+    prefix=settings.API_V1_STR,
+)
 
 
+# Health check
 @app.get("/health", tags=["Health"])
-@app.get(f"{settings.API_V1_STR}/health", tags=["Health"])
+@app.get(
+    f"{settings.API_V1_STR}/health",
+    tags=["Health"],
+)
 async def health_check():
     return {
         "status": "ok",
